@@ -1,37 +1,25 @@
 package com.example.musicapplicaiton.Presentation.Screen
 
 import android.annotation.SuppressLint
-import android.graphics.drawable.shapes.Shape
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CardElevation
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,16 +30,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import kotlin.math.min
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -59,6 +50,7 @@ fun MusicHome(viewModel: MusicHomeViewModel) {
     val systemUiController = rememberSystemUiController()
 
     systemUiController.setStatusBarColor(color = Color.Black)
+    val scrollState = rememberScrollState()
 
     LaunchedEffect(key1 = Unit) {
         viewModel.fetchSongs()
@@ -67,58 +59,51 @@ fun MusicHome(viewModel: MusicHomeViewModel) {
 
     Scaffold(containerColor = Color.Black) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Box(modifier = Modifier.weight(1f)) {
-                LazyColumn {
-                    itemsIndexed(viewModel.state.songList) { index, song ->
-                        if (selectedTabIndex == 0) {
-                            songItem(title = song.name ?: "", subTitle = song.artist ?: "")
-                        }
+//            Box(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier
+                    .verticalScroll(scrollState)
+                    .fadingEdges(scrollState)
+                    .weight(1f)
+            ) {
+                if (selectedTabIndex == 0) {
+                    viewModel.state.songList.forEach {
+                        songItem(
+                            title = it.name ?: "",
+                            subTitle = it.artist ?: ""
+                        )
                     }
-                }
-
-                LazyColumn {
-                    itemsIndexed(viewModel.state.songList) { index, song ->
-                        if (selectedTabIndex == 1) {
-                            if (song.top_track == true) {
-                                songItem(title = song.name ?: "", subTitle = song.artist ?: "")
-                            }
-                        }
+                } else {
+                    viewModel.state.songList.forEach {
+                        if (it.top_track == true)
+                            songItem(
+                                title = it.name ?: "",
+                                subTitle = it.artist ?: ""
+                            )
                     }
                 }
             }
 
-            CustomTabRow(modifier = Modifier.fillMaxWidth().padding(bottom = 25.dp),
-                selectedTabIndex = selectedTabIndex,
-                { selectedTabIndex = it })
-
-            // Tab Row at the bottom
-            /*TabRow(
-                modifier = Modifier.fillMaxWidth(),
-                containerColor = Color.Black,
-                selectedTabIndex = selectedTabIndex
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(alignment = Alignment.CenterHorizontally)
+                    .padding(bottom = 25.dp)
             ) {
-                Tab(
-                    selected = selectedTabIndex == 0,
-                    onClick = { selectedTabIndex = 0 }
-                ) {
-                    Text(text = "Top Click", color = Color.White)
-                }
-                Tab(
-                    selected = selectedTabIndex == 1,
-                    onClick = { selectedTabIndex = 1 }
-                ) {
-                    Text(text = "For You", color = Color.White)
-                }
-            }*/
+                CustomTabRow(
+                    modifier = Modifier
+                        .padding(bottom = 25.dp),
+                    selectedTabIndex = selectedTabIndex,
+                    onTabSelected = { selectedTabIndex = it }
+                )
+            }
         }
     }
 }
 
 @Composable
 fun CustomDotIndicator(
-    color: Color,
-    dotSize: Dp,
-    modifier: Modifier = Modifier
+    color: Color, dotSize: Dp, modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
@@ -130,46 +115,52 @@ fun CustomDotIndicator(
 
 @Composable
 fun CustomTabRow(
-    modifier: Modifier,
-    selectedTabIndex: Int,
-    onTabSelected: (Int) -> Unit
+    modifier: Modifier, selectedTabIndex: Int, onTabSelected: (Int) -> Unit
 ) {
-    TabRow(
-        modifier = modifier.height(40.dp),
-        containerColor = Color.Transparent,
-        selectedTabIndex = selectedTabIndex,
-        indicator = { tabPositions ->
-            CustomDotIndicator(
-                color = Color.White,
-                dotSize = 10.dp,
-                modifier = Modifier
-                    .tabIndicatorOffset(tabPositions[selectedTabIndex])
-            )
-        }
+//    Card(
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .wrapContentHeight()
+//            .background(
+//                brush = Brush.verticalGradient(
+//                    colors = listOf(Color.Transparent.copy(alpha = 0.4f), Color.Transparent)
+//                )
+//            ),
+//        elevation = 5.dp
+//    ) {
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
+            .padding(bottom = 40.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        Tab(
-            selected = selectedTabIndex == 0,
-            onClick = { onTabSelected(0) },
-            modifier = Modifier.background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Gray.copy(alpha = 0.5f))
-                )
-            )
+        Column(
+            modifier = Modifier.clickable { onTabSelected(0) },
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Top Click", color = Color.White)
+            Text(
+                text = "For You",
+                color = if (selectedTabIndex == 0) Color.White else Color.Gray.copy(alpha = 0.5f)
+            )
+            if (selectedTabIndex == 0) CustomDotIndicator(color = Color.White, dotSize = 10.dp)
         }
-        Tab(
-            selected = selectedTabIndex == 1,
-            onClick = { onTabSelected(1) },
-            modifier = Modifier.background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color.Gray.copy(alpha = 0.5f), Color.Gray.copy(alpha = 0.1f))
-                )
-            )
+        Column(
+            modifier = Modifier.clickable { onTabSelected(1) },
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "For You", color = Color.White)
+            Text(
+                text = "Top Track",
+                color = if (selectedTabIndex == 1) Color.White else Color.Gray.copy(alpha = 0.5f)
+            )
+            if (selectedTabIndex == 1) CustomDotIndicator(color = Color.White, dotSize = 10.dp)
         }
     }
+//    }
 }
 
 
@@ -180,29 +171,26 @@ fun songItem(
     leadingIcon: @Composable (() -> Unit)? = null,
     onClick: (() -> Unit)? = null
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick?.invoke() }
-            .padding(top = 18.dp, bottom = 18.dp)
-    ) {
+    Box(modifier = Modifier
+        .fillMaxWidth()
+        .clickable { onClick?.invoke() }
+        .padding(top = 18.dp, bottom = 18.dp)) {
         Row(
             horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
 //            leadingIcon?.let {
-                Card(
-                    modifier = Modifier
-                        .size(55.dp),
-                    elevation = CardDefaults.cardElevation(0.dp),
-                    border = BorderStroke(1.dp, Color.Red),
-                    shape = CircleShape,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        leadingIcon?.invoke()
-                    }
+            Card(
+                modifier = Modifier.size(55.dp),
+                elevation = CardDefaults.cardElevation(0.dp),
+                border = BorderStroke(1.dp, Color.Red),
+                shape = CircleShape,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    leadingIcon?.invoke()
                 }
+            }
 //            }
             Column(
                 modifier = Modifier
@@ -210,27 +198,62 @@ fun songItem(
                     .weight(1f)
             ) {
                 Text(
-                    text = title,
-                    style = TextStyle(
+                    text = title, style = TextStyle(
                         fontFamily = FontFamily.SansSerif,
                         fontWeight = FontWeight.Normal,
                         fontSize = 14.sp, // Adjust font size as needed
                         lineHeight = 20.sp
-                    ),
-                    color = Color.White
+                    ), color = Color.White
                 )
                 Text(
-                    text = subTitle,
-                    style = TextStyle(
+                    text = subTitle, style = TextStyle(
                         fontFamily = FontFamily.SansSerif,
                         fontWeight = FontWeight.Normal,
                         fontSize = 12.sp, // Adjust font size as needed
                         lineHeight = 16.sp
-                    ),
-                    color = Color.White
+                    ), color = Color.Gray.copy(alpha = 0.7f)
                 )
             }
         }
     }
 }
+
+
+fun Modifier.fadingEdges(
+    scrollState: ScrollState,
+    topEdgeHeight: Dp = 72.dp,
+    bottomEdgeHeight: Dp = 72.dp
+): Modifier = this.then(
+    Modifier
+        // adding layer fixes issue with blending gradient and content
+        .graphicsLayer { alpha = 0.99F }
+        .drawWithContent {
+            drawContent()
+
+            val topColors = listOf(Color.Transparent, Color.Black)
+            val topStartY = scrollState.value.toFloat()
+            val topGradientHeight = min(topEdgeHeight.toPx(), topStartY)
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = topColors,
+                    startY = topStartY,
+                    endY = topStartY + topGradientHeight
+                ),
+                blendMode = BlendMode.DstIn
+            )
+
+            val bottomColors = listOf(Color.Black, Color.Transparent)
+            val bottomEndY = size.height - scrollState.maxValue + scrollState.value
+            val bottomGradientHeight =
+                min(bottomEdgeHeight.toPx(), scrollState.maxValue.toFloat() - scrollState.value)
+            if (bottomGradientHeight != 0f) drawRect(
+                brush = Brush.verticalGradient(
+                    colors = bottomColors,
+                    startY = bottomEndY - bottomGradientHeight,
+                    endY = bottomEndY
+                ),
+                blendMode = BlendMode.DstIn
+            )
+        }
+)
 
